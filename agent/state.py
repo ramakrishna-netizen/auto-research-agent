@@ -9,9 +9,11 @@ class AgentState(TypedDict):
     report: str
     loop_count: int
     is_sufficient: bool
+    eval_reasoning: str
 
 class SubQueries(BaseModel):
     """Pydantic model for extracting sub-queries from LLM."""
+    research_plan: str = Field(description="Step-by-step reasoning and plan for researching the query.")
     sub_queries: List[str] = Field(description="A list of specific search queries to execute to gather information about the topic.")
 
 class EvaluationResult(BaseModel):

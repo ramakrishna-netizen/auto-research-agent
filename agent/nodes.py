@@ -21,11 +21,17 @@ async def planner(state: AgentState, config: RunnableConfig):
     await send_progress(queue, "planner", "Decomposing query into sub-tasks...")
     
     planner_model = get_planner()
-    prompt = f"Decompose this query into specific search queries (max 3):\n\nQuery: {state['query']}"
+    
+    # Include context if we are looping back from a failed evaluation
+    context = ""
+    if state.get("eval_reasoning"):
+        context = f"\n\nPrevious attempt failed because: {state['eval_reasoning']}\nPlease adjust your research plan and sub-queries accordingly to find the missing information."
+        
+    prompt = f"You are an expert autonomous research planner. Create a step-by-step research plan and decompose this query into specific search queries (max 3).\n\nQuery: {state['query']}{context}"
     llm = planner_model.with_structured_output(SubQueries)
     try:
         result: SubQueries = await llm.ainvoke(prompt)
-        await send_progress(queue, "planner", f"Generated {len(result.sub_queries)} sub-queries.")
+        await send_progress(queue, "planner", f"Plan: {result.research_plan}\nGenerated {len(result.sub_queries)} sub-queries.")
         return {"sub_queries": result.sub_queries}
     except Exception as e:
         await send_progress(queue, "planner", f"LLM parsing failed, using simple approach. Error: {e}")
@@ -75,16 +81,16 @@ async def evaluator(state: AgentState, config: RunnableConfig):
         loop_count = state.get("loop_count", 0) + 1
         
         if result.is_sufficient or loop_count >= 2:
-            await send_progress(queue, "evaluator", "Information is sufficient. Proceeding to summary.")
-            return {"is_sufficient": True, "loop_count": loop_count}
+            await send_progress(queue, "evaluator", f"Information is sufficient (or max loops reached). Logic: {result.reasoning}")
+            return {"is_sufficient": True, "loop_count": loop_count, "eval_reasoning": result.reasoning}
         else:
-            await send_progress(queue, "evaluator", "Information not sufficient. Loop restarting...")
-            return {"is_sufficient": False, "loop_count": loop_count}
+            await send_progress(queue, "evaluator", f"Information not sufficient. Logic: {result.reasoning}")
+            return {"is_sufficient": False, "loop_count": loop_count, "eval_reasoning": result.reasoning}
     except Exception as e:
          # Fallback
          loop_count = state.get("loop_count", 0) + 1
          await send_progress(queue, "evaluator", "Evaluation failed, proceeding anyway.")
-         return {"is_sufficient": True, "loop_count": loop_count}
+         return {"is_sufficient": True, "loop_count": loop_count, "eval_reasoning": "Fallback evaluation."}
 
 async def summarizer(state: AgentState, config: RunnableConfig):
     queue = config.get("configurable", {}).get("queue")
@@ -93,7 +99,17 @@ async def summarizer(state: AgentState, config: RunnableConfig):
     query = state["query"]
     results = "\n\n".join(state.get("search_results", []))
     
-    prompt = f"Original Query: {query}\n\nGathered Information:\n{results}\n\nWrite a comprehensive final report to answer the query using the above information. Format nicely in Markdown."
+    prompt = f"""Original Query: {query}
+    
+Gathered Information:
+{results}
+
+Write a comprehensive final report to answer the query using the above information. Format nicely in Markdown.
+CRITICAL INSTRUCTIONS:
+1. Synthesize the findings completely. 
+2. Resolve any contradictions across the provided sources. 
+3. Explicitly state the confidence level of your conclusions based on the context.
+4. Cite your sources inline where appropriate."""
     
     summarizer_model = get_summarizer()
     response = await summarizer_model.ainvoke(prompt)

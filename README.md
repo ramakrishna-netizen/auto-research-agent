@@ -46,7 +46,7 @@ We chose a **Plan-and-Execute** pattern (via LangGraph) over a standard ReAct lo
 
 > **Objective**: Generate a high-fidelity, cited report.
 > **Key Instruction**: "Synthesize the findings completely. Resolve any contradictions across the provided sources. Explicitly state the confidence level."
-### 4. To run the agent
+## To run the agent
     python -m uvicorn main:app --reload --port 8000
     
 ## Tech Stack

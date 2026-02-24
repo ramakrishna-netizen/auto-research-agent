@@ -1,8 +1,10 @@
 fastapi
 uvicorn
 langgraph
+langchain-core
 langchain-google-genai
-tavily-python
+tavily
+supabase
 websockets
 python-dotenv
 pydantic

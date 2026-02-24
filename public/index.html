@@ -1,205 +1,749 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Autonomous Research Agent</title>
-    <style>
-      body {
-        font-family:
-          system-ui,
-          -apple-system,
-          sans-serif;
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 20px;
-        background: #f5f5f5;
-        color: #333;
-      }
-      .container {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      }
-      .input-group {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
-      }
-      input[type="text"] {
-        flex: 1;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 16px;
-      }
-      button {
-        padding: 10px 20px;
-        background: #0066cc;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 16px;
-      }
-      button:hover {
-        background: #0052a3;
-      }
-      button:disabled {
-        background: #cccccc;
-        cursor: not-allowed;
-      }
-      .log {
-        background: #1e1e1e;
-        color: #00ff00;
-        padding: 15px;
-        border-radius: 4px;
-        font-family: monospace;
-        height: 300px;
-        overflow-y: auto;
-        margin-bottom: 20px;
-        white-space: pre-wrap;
-      }
-      .report {
-        display: none;
-        background: white;
-        padding: 20px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        line-height: 1.6;
-      }
-      .node-tag {
-        display: inline-block;
-        padding: 2px 6px;
-        border-radius: 3px;
-        background: #333;
-        color: white;
-        margin-right: 8px;
-        font-size: 12px;
-        font-weight: bold;
-        width: 80px;
-        text-align: center;
-      }
-      .node-planner {
-        background: #2563eb;
-      }
-      .node-searcher {
-        background: #db2777;
-      }
-      .node-evaluator {
-        background: #d97706;
-      }
-      .node-summarizer {
-        background: #059669;
-      }
-      .node-system {
-        background: #4b5563;
-      }
-      .node-error {
-        background: #dc2626;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <h1>Autonomous Research Agent</h1>
-      <div class="input-group">
-        <input
-          type="text"
-          id="queryInput"
-          placeholder="Enter a complex research topic..."
-          onkeypress="if (event.key === 'Enter') startSearch();"
-        />
-        <button id="searchBtn" onclick="startSearch()">Research</button>
-      </div>
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Autonomous Research Agent</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    primary: "#2563EB",
+                    "sidebar-bg": "#F8FAFC",
+                    "main-bg": "#FFFFFF",
+                    "console-bg": "#0F172A",
+                    "console-border": "#1E293B",
+                    "console-text": "#E2E8F0",
+                    "console-muted": "#64748B",
+                },
+                fontFamily: {
+                    sans: ["Inter", "sans-serif"],
+                    mono: ["JetBrains Mono", "monospace"],
+                },
+            },
+        },
+    };
+</script>
+<style type="text/tailwindcss">
+    @layer base {
+        body { @apply font-sans antialiased text-slate-900 bg-white overflow-hidden h-screen; }
+    }
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+        font-size: 18px;
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+    .console-scrollbar::-webkit-scrollbar { width: 4px; }
+    .console-scrollbar::-webkit-scrollbar-track { background: #0F172A; }
+    .console-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+    .ide-layout {
+        display: grid;
+        grid-template-columns: 260px 1fr 380px;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+    }
+    .input-glow:focus-within {
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2), 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    @keyframes pulse-dot {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
+    .animate-pulse-dot { animation: pulse-dot 1.2s ease-in-out infinite; }
 
-      <h3>Thinking Log</h3>
-      <div id="logArea" class="log"></div>
+    /* Elite UI Components */
+    .glass-effect {
+        background: rgba(15, 23, 42, 0.8);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+    .elite-console-item {
+        @apply border-l-2 py-3 px-4 transition-all duration-300;
+        background: rgba(255, 255, 255, 0.03);
+    }
+    .elite-console-item:hover {
+        background: rgba(255, 255, 255, 0.06);
+    }
+    @keyframes fade-in-up {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in-up { animation: fade-in-up 0.4s ease-out forwards; }
+    
+    .profile-gradient {
+        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+</style>
+</head>
+<body>
 
-      <h3>Final Report</h3>
-      <div id="reportArea" class="report"></div>
+<!-- ==================== AUTH MODAL ==================== -->
+<div id="authModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <!-- Auth Header -->
+        <div class="bg-gradient-to-br from-primary to-blue-700 px-8 py-10 text-center">
+            <span class="material-symbols-outlined !text-[48px] text-white/80 mb-3 block">science</span>
+            <h1 class="text-2xl font-bold text-white">Research Agent</h1>
+            <p class="text-blue-200 text-sm mt-1">AI-powered deep research</p>
+        </div>
+        <!-- Auth Form -->
+        <div class="px-8 py-8">
+            <div id="authError" class="hidden mb-4 px-4 py-2.5 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs font-medium"></div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Email</label>
+                    <input id="authEmail" type="email" placeholder="you@example.com"
+                        class="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"/>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Password</label>
+                    <input id="authPassword" type="password" placeholder="••••••••"
+                        class="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                        onkeydown="if(event.key==='Enter')handleAuth()"/>
+                </div>
+            </div>
+
+            <button id="authSubmitBtn" onclick="handleAuth()" class="w-full mt-6 py-2.5 bg-primary hover:bg-blue-600 text-white rounded-lg font-semibold text-sm transition-all active:scale-[0.98] shadow-sm">
+                Log In
+            </button>
+
+            <p class="text-center text-xs text-slate-400 mt-5">
+                <span id="authToggleText">Don't have an account?</span>
+                <button id="authToggleBtn" onclick="toggleAuthMode()" class="text-primary font-semibold hover:underline ml-1">Sign Up</button>
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MAIN DASHBOARD (hidden until logged in) ==================== -->
+<div id="dashboard" class="ide-layout hidden">
+
+<!-- ==================== LEFT SIDEBAR ==================== -->
+<aside class="bg-sidebar-bg border-r border-slate-200 flex flex-col h-full overflow-hidden">
+    <div class="h-14 flex-none flex items-center px-4 border-b border-slate-200 gap-2 bg-sidebar-bg z-10">
+        <span class="material-symbols-outlined text-primary">history</span>
+        <span class="font-bold text-sm tracking-tight text-slate-700 uppercase">Research History</span>
+    </div>
+    <div class="p-3 flex-none border-b border-slate-100 bg-sidebar-bg/50">
+        <button id="newResearchBtn" onclick="newResearch()" class="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-primary hover:bg-blue-600 text-white rounded-lg transition-all shadow-sm active:scale-[0.98] group">
+            <span class="material-symbols-outlined !text-[20px] group-hover:rotate-90 transition-transform duration-300">add</span>
+            <span class="text-sm font-semibold">New Research</span>
+        </button>
+    </div>
+    <div id="sessionList" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-1">
+        <div class="px-2 py-8 text-center text-xs text-slate-400">Loading sessions...</div>
+    </div>
+    <!-- User Profile -->
+    <div class="flex-none p-4 mt-auto border-t border-slate-200 bg-white/50 backdrop-blur-sm">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl profile-gradient flex items-center justify-center text-white text-sm font-bold shadow-lg" id="userAvatar">?</div>
+            <div class="flex-1 min-w-0">
+                <p id="userEmail" class="text-[11px] font-bold text-slate-700 truncate tracking-tight">User</p>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Active Pro</span>
+                </div>
+            </div>
+            <button onclick="logout()" class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all group" title="Log out">
+                <span class="material-symbols-outlined !text-[18px] group-hover:rotate-12 transition-transform">logout</span>
+            </button>
+        </div>
     </div>
 
-    <!-- marked renderer for markdown -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script>
-      let ws = null;
+</aside>
 
-      function addLog(node, message) {
-        const logArea = document.getElementById("logArea");
-        const entry = document.createElement("div");
-        entry.style.marginBottom = "8px";
+<!-- ==================== CENTER MAIN ==================== -->
+<main class="bg-main-bg flex flex-col h-full relative overflow-hidden">
+    <header id="mainHeader" class="h-14 flex-none flex items-center justify-between px-8 border-b border-slate-100 bg-white z-10">
+        <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span id="breadcrumbTitle" class="text-slate-600 font-medium">New Research</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <button onclick="exportReport()" class="flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-primary transition-colors">
+                <span class="material-symbols-outlined !text-[18px]">share</span>
+                Export
+            </button>
+            <div class="h-4 w-[1px] bg-slate-200"></div>
+            
+        </div>
+    </header>
 
-        const tag = document.createElement("span");
-        tag.className = `node-tag node-${node.toLowerCase()}`;
-        tag.textContent = node.toUpperCase();
+    <div id="reportScroll" class="flex-1 overflow-y-auto custom-scrollbar relative">
+        <div class="max-w-3xl mx-auto py-12 px-8 pb-40">
+            <article id="reportArea" class="prose prose-slate max-w-none">
+                <div id="welcomeState" class="text-center py-20">
+                    <span class="material-symbols-outlined !text-[64px] text-slate-200 mb-4 block">science</span>
+                    <h2 class="text-2xl font-bold text-slate-300 mb-2">Autonomous Research Agent</h2>
+                    <p class="text-slate-400 text-sm max-w-md mx-auto">Enter a research topic below to start an AI-powered deep-dive. The agent will plan, search, evaluate, and synthesize a comprehensive report.</p>
+                </div>
+                <div id="reportContent" class="hidden"></div>
+            </article>
+        </div>
+    </div>
 
-        const text = document.createElement("span");
-        text.textContent = message;
+    <div class="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white via-white to-transparent pointer-events-none z-20">
+        <div class="max-w-3xl mx-auto pointer-events-auto">
+            <div class="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200 p-2 flex items-center gap-2 input-glow transition-all">
+                
+                <input id="queryInput" class="flex-1 bg-transparent border-none text-xs text-slate-700 placeholder:text-slate-400 focus:ring-0 p-1" placeholder="Start a new research run or ask a follow-up query..." type="text" onkeydown="if(event.key==='Enter')startSearch()"/>
+                <div class="flex items-center gap-1 border-l border-slate-200 pl-2">
+                   
+                    <button id="searchBtn" onclick="startSearch()" class="p-2 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center shadow-sm">
+                        <span class="material-symbols-outlined !text-[20px]">arrow_upward</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
 
-        entry.appendChild(tag);
-        entry.appendChild(text);
-        logArea.appendChild(entry);
-        logArea.scrollTop = logArea.scrollHeight;
-      }
+<!-- ==================== RIGHT CONSOLE ==================== -->
+<aside class="glass-effect border-l border-console-border flex flex-col h-full shadow-2xl z-30 overflow-hidden w-[380px]">
+    <div class="h-14 flex-none flex items-center justify-between px-4 border-b border-console-border bg-white/5 backdrop-blur-md">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <span class="material-symbols-outlined text-blue-400 !text-[18px]">terminal</span>
+            </div>
+            <div class="flex flex-col">
+                <span class="font-mono text-[10px] font-bold text-console-text uppercase tracking-[0.2em]">Thinking Log</span>
+                <span class="text-[8px] text-blue-400/60 font-mono uppercase tracking-widest">Real-time Analysis</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-1.5 bg-black/20 px-2 py-1 rounded-full border border-white/5">
+            <div id="statusDot1" class="w-1.5 h-1.5 rounded-full bg-slate-700"></div>
+            <div id="statusDot2" class="w-1.5 h-1.5 rounded-full bg-slate-700"></div>
+            <div id="statusDot3" class="w-1.5 h-1.5 rounded-full bg-slate-700"></div>
+        </div>
+    </div>
 
-      function startSearch() {
-        const query = document.getElementById("queryInput").value.trim();
-        if (!query) return;
+    <div id="logArea" class="flex-1 overflow-y-auto console-scrollbar font-mono text-[11px] leading-relaxed selection:bg-blue-500/30">
+        <div class="p-3 border-b border-console-border/30">
+            <div class="flex items-start gap-3">
+                <span class="material-symbols-outlined text-slate-600 !text-[14px] mt-0.5">info</span>
+                <div class="flex-1 min-w-0">
+                    <p class="text-console-muted text-[10px]">Waiting for research query...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="flex-none h-10 border-t border-console-border bg-[#0d131f] flex items-center px-4">
+        <div class="w-full flex justify-between items-center text-[9px] text-console-muted font-mono uppercase tracking-widest">
+            <span id="processStatus">Idle</span>
+            <span>v1.0.0</span>
+        </div>
+    </div>
+</aside>
 
-        const btn = document.getElementById("searchBtn");
-        const input = document.getElementById("queryInput");
-        const logArea = document.getElementById("logArea");
-        const reportArea = document.getElementById("reportArea");
+</div><!-- end dashboard -->
 
-        btn.disabled = true;
-        input.disabled = true;
-        logArea.innerHTML = "";
-        reportArea.style.display = "none";
-        reportArea.innerHTML = "";
+<script>
+// ========== AUTH STATE ==========
+let authToken = null;
+let currentUser = null;
+let authMode = 'login'; // 'login' or 'signup'
 
-        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        // Use current host for websocket connection
-        ws = new WebSocket(`${protocol}//${window.location.host}/ws/agent`);
+// ========== APP STATE ==========
+let ws = null;
+let currentSessionId = null;
+let isRunning = false;
 
-        ws.onopen = () => {
-          addLog("system", "Connected to agent. Starting task...");
-          ws.send(JSON.stringify({ query: query }));
-        };
+// ========== NODE COLOR MAP ==========
+const nodeColors = {
+    system:     { bg: 'bg-pink-500/10',    text: 'text-pink-400',    border: 'border-pink-500/20' },
+    planner:    { bg: 'bg-blue-500/10',    text: 'text-blue-400',    border: 'border-blue-500/20' },
+    searcher:   { bg: 'bg-cyan-500/10',    text: 'text-cyan-400',    border: 'border-cyan-500/20' },
+    evaluator:  { bg: 'bg-amber-500/10',   text: 'text-amber-400',   border: 'border-amber-500/20' },
+    summarizer: { bg: 'bg-indigo-500/10',  text: 'text-indigo-400',  border: 'border-indigo-500/20' },
+    error:      { bg: 'bg-red-500/10',     text: 'text-red-400',     border: 'border-red-500/20' },
+};
 
-        ws.onmessage = (event) => {
-          const data = JSON.parse(event.data);
+// ========== HELPERS ==========
+function getTimestamp() {
+    const now = new Date();
+    return now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
 
-          if (
-            data.node === "system" &&
-            data.message.startsWith("Task Completed")
-          ) {
+function getNodeStyle(node) {
+    return nodeColors[node.toLowerCase()] || nodeColors.system;
+}
+
+function truncate(str, max = 50) {
+    return str.length > max ? str.substring(0, max) + '...' : str;
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function authHeaders() {
+    return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` };
+}
+
+// ========== AUTH FUNCTIONS ==========
+function toggleAuthMode() {
+    authMode = authMode === 'login' ? 'signup' : 'login';
+    document.getElementById('authSubmitBtn').textContent = authMode === 'login' ? 'Log In' : 'Create Account';
+    document.getElementById('authToggleText').textContent = authMode === 'login' ? "Don't have an account?" : 'Already have an account?';
+    document.getElementById('authToggleBtn').textContent = authMode === 'login' ? 'Sign Up' : 'Log In';
+    document.getElementById('authError').classList.add('hidden');
+}
+
+async function handleAuth() {
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    const errorDiv = document.getElementById('authError');
+
+    if (!email || !password) {
+        errorDiv.textContent = 'Please enter both email and password.';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+
+    if (authMode === 'signup' && password.length < 6) {
+        errorDiv.textContent = 'Password must be at least 6 characters.';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+
+    const btn = document.getElementById('authSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Please wait...';
+    errorDiv.classList.add('hidden');
+
+    try {
+        const endpoint = authMode === 'login' ? '/auth/login' : '/auth/signup';
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || data.error) {
+            errorDiv.textContent = data.error || 'Authentication failed.';
+            errorDiv.classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = authMode === 'login' ? 'Log In' : 'Create Account';
+            return;
+        }
+
+        // Success — store credentials
+        authToken = data.access_token;
+        currentUser = data.user;
+
+        // Persist to localStorage
+        localStorage.setItem('auth_token', authToken);
+        localStorage.setItem('auth_user', JSON.stringify(currentUser));
+
+        showDashboard();
+    } catch (e) {
+        errorDiv.textContent = 'Network error. Please try again.';
+        errorDiv.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = authMode === 'login' ? 'Log In' : 'Create Account';
+    }
+}
+
+function logout() {
+    authToken = null;
+    currentUser = null;
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('current_session_id');
+    showAuthModal();
+}
+
+function showDashboard() {
+    document.getElementById('authModal').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+
+    // Update user profile in sidebar
+    if (currentUser) {
+        const email = currentUser.email || 'User';
+        document.getElementById('userEmail').textContent = email;
+        document.getElementById('userAvatar').textContent = email.charAt(0).toUpperCase();
+    }
+
+    loadSessions();
+    document.getElementById('queryInput').focus();
+}
+
+function showAuthModal() {
+    document.getElementById('authModal').classList.remove('hidden');
+    document.getElementById('dashboard').classList.add('hidden');
+    document.getElementById('authEmail').value = '';
+    document.getElementById('authPassword').value = '';
+    document.getElementById('authError').classList.add('hidden');
+    const btn = document.getElementById('authSubmitBtn');
+    btn.disabled = false;
+    btn.textContent = authMode === 'login' ? 'Log In' : 'Create Account';
+}
+
+// ========== CONSOLE LOG ==========
+function addLog(node, message, isActive = false) {
+    const logArea = document.getElementById('logArea');
+    const style = getNodeStyle(node);
+    const time = getTimestamp();
+
+    const iconName = isActive ? 'sync' : 'check_circle';
+    const iconColor = isActive ? 'text-blue-400' : 'text-emerald-400';
+    const borderStyle = style.border.replace('border-', 'border-l-'); // Use left border
+
+    const entry = document.createElement('div');
+    entry.className = `elite-console-item ${borderStyle} mb-2 animate-fade-in-up`;
+    entry.innerHTML = `
+        <div class="flex items-start gap-3">
+            <div class="mt-1">
+                <span class="material-symbols-outlined ${iconColor} !text-[14px] ${isActive ? 'animate-spin' : ''}">${iconName}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-[8px] px-1.5 py-0.5 ${style.bg} ${style.text} border ${style.border} rounded-[4px] font-bold uppercase tracking-wider">${node}</span>
+                    <span class="text-[9px] text-console-muted font-mono tabular-nums opacity-60">${time}</span>
+                </div>
+                <p class="text-console-text/90 text-[11px] leading-relaxed">${escapeHtml(message)}</p>
+            </div>
+        </div>
+    `;
+    logArea.appendChild(entry);
+    
+    // Auto-scroll with smooth behavior
+    logArea.scrollTo({
+        top: logArea.scrollHeight,
+        behavior: 'smooth'
+    });
+}
+
+
+// ========== SESSION LIST ==========
+async function loadSessions() {
+    try {
+        const res = await fetch('/sessions', { headers: authHeaders() });
+        if (res.status === 401) { logout(); return; }
+        const sessions = await res.json();
+        renderSessionList(sessions);
+    } catch (e) {
+        console.error('Failed to load sessions:', e);
+        document.getElementById('sessionList').innerHTML = `<div class="px-2 py-8 text-center text-xs text-slate-400">No sessions yet</div>`;
+    }
+}
+
+function renderSessionList(sessions) {
+    const list = document.getElementById('sessionList');
+    if (!sessions || sessions.length === 0) {
+        list.innerHTML = `<div class="px-2 py-8 text-center text-xs text-slate-400">No sessions yet. Start your first research!</div>`;
+        return;
+    }
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+
+    let html = '';
+    let currentGroup = '';
+
+    sessions.forEach(s => {
+        const createdAt = new Date(s.created_at);
+        let group;
+        if (createdAt >= today) group = 'Today';
+        else if (createdAt >= yesterday) group = 'Yesterday';
+        else group = 'Earlier';
+
+        if (group !== currentGroup) {
+            currentGroup = group;
+            const mt = group !== 'Today' ? 'mt-6' : '';
+            html += `<div class="px-2 ${mt} mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">${group}</div>`;
+        }
+
+        const isActive = s.id === currentSessionId;
+        const activeClass = isActive
+            ? 'text-primary bg-blue-50 border-l-2 border-primary'
+            : 'text-slate-600 hover:bg-slate-100 border-l-2 border-transparent';
+
+        const timeStr = createdAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const dateStr = createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const displayTime = createdAt >= today ? timeStr : dateStr;
+
+        html += `
+            <div class="group relative">
+                <a href="#" onclick="loadSession(${s.id}); return false;" class="flex flex-col gap-0.5 px-3 py-2.5 text-xs font-medium ${activeClass} rounded-md transition-colors pr-10">
+                    <span class="truncate">${escapeHtml(truncate(s.query, 45))}</span>
+                    <span class="text-[10px] ${isActive ? 'text-blue-400' : 'text-slate-400'} font-normal">${displayTime}</span>
+                </a>
+                <button onclick="deleteSession(${s.id}, event)" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all rounded-md hover:bg-red-50" title="Delete session">
+                    <span class="material-symbols-outlined !text-[16px]">delete</span>
+                </button>
+            </div>
+        `;
+    });
+
+    list.innerHTML = html;
+}
+
+async function deleteSession(sessionId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    if (!confirm('Are you sure you want to delete this research session?')) return;
+
+    try {
+        const res = await fetch(`/sessions/${sessionId}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+        });
+        
+        if (res.ok) {
+            if (currentSessionId === sessionId) {
+                localStorage.removeItem('current_session_id');
+                newResearch();
+            }
+            loadSessions();
+        } else {
+            const data = await res.json();
+            alert(data.error || 'Failed to delete session');
+        }
+    } catch (e) {
+        console.error('Delete error:', e);
+        alert('Failed to delete session due to a network error');
+    }
+}
+
+
+// ========== LOAD A SPECIFIC SESSION ==========
+async function loadSession(sessionId) {
+    try {
+        currentSessionId = sessionId;
+        const res = await fetch(`/sessions/${sessionId}`, { headers: authHeaders() });
+        if (res.status === 401) { logout(); return; }
+        const session = await res.json();
+        if (session.error) {
+            console.error('Session not found');
+            return;
+        }
+        document.getElementById('breadcrumbTitle').textContent = truncate(session.query, 40);
+        showReport(session.report, session.query);
+        localStorage.setItem('current_session_id', sessionId);
+        loadSessions();
+    } catch (e) {
+        console.error('Failed to load session:', e);
+    }
+}
+
+function showReport(report, query) {
+    const welcome = document.getElementById('welcomeState');
+    const content = document.getElementById('reportContent');
+
+    welcome.classList.add('hidden');
+    content.classList.remove('hidden');
+
+    let html = `
+        <div class="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-primary text-[10px] font-bold rounded-full mb-6 border border-blue-100 uppercase tracking-widest">
+            Analysis Complete
+        </div>
+        <h2 class="text-4xl font-extrabold text-slate-500 tracking-tight mb-8 leading-tight">
+            ${escapeHtml(query)}
+        </h2>
+    `;
+
+    try {
+        html += marked.parse(report);
+    } catch (e) {
+        html += `<pre class="whitespace-pre-wrap">${escapeHtml(report)}</pre>`;
+    }
+
+    content.innerHTML = html;
+    document.getElementById('reportScroll').scrollTop = 0;
+}
+
+// ========== NEW RESEARCH ==========
+function newResearch() {
+    if (isRunning) return;
+    currentSessionId = null;
+    document.getElementById('breadcrumbTitle').textContent = 'New Research';
+    document.getElementById('welcomeState').classList.remove('hidden');
+    document.getElementById('reportContent').classList.add('hidden');
+    document.getElementById('reportContent').innerHTML = '';
+    localStorage.removeItem('current_session_id');
+
+    document.getElementById('logArea').innerHTML = `
+        <div class="p-3 border-b border-console-border/30">
+            <div class="flex items-start gap-3">
+                <span class="material-symbols-outlined text-slate-600 !text-[14px] mt-0.5">info</span>
+                <div class="flex-1 min-w-0">
+                    <p class="text-console-muted text-[10px]">Waiting for research query...</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const input = document.getElementById('queryInput');
+    input.value = '';
+    input.focus();
+    loadSessions();
+}
+
+// ========== SEARCH / WEBSOCKET ==========
+function startSearch() {
+    const input = document.getElementById('queryInput');
+    const query = input.value.trim();
+    if (!query || isRunning) return;
+
+    isRunning = true;
+    currentSessionId = null;
+
+    const btn = document.getElementById('searchBtn');
+    btn.disabled = true;
+    input.disabled = true;
+    document.getElementById('breadcrumbTitle').textContent = truncate(query, 40);
+    document.getElementById('processStatus').textContent = 'Process Active';
+    setConsoleDots('active');
+
+    document.getElementById('logArea').innerHTML = '';
+    
+    // Add User query to log
+    addLog('system', `New research session started for: "${query}"`);
+
+    // Hide welcome, show blank report area with query heading
+    document.getElementById('welcomeState').classList.add('hidden');
+    document.getElementById('reportContent').classList.remove('hidden');
+    document.getElementById('reportContent').innerHTML = `
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-slate-400 mb-6">${escapeHtml(query)}</h1>
+            <div class="flex items-center gap-3 text-slate-400">
+                <span class="material-symbols-outlined animate-spin !text-[24px]">progress_activity</span>
+                <span class="text-sm italic">Agent is researching, please wait...</span>
+            </div>
+        </div>
+    `;
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${protocol}//${window.location.host}/ws/agent`);
+
+    ws.onopen = () => {
+        addLog('system', 'Connected to agent. Starting research...');
+        ws.send(JSON.stringify({ query: query, token: authToken }));
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.node === 'error' && data.message.includes('Unauthorized')) {
+            addLog('error', 'Session expired. Please log in again.');
+            ws.close();
+            logout();
+            return;
+        }
+
+        if (data.node === 'system' && data.message.startsWith('Task Completed')) {
             addLog(data.node, data.message);
             if (data.report) {
-              try {
-                  reportArea.innerHTML = marked.parse(data.report);
-                  reportArea.style.display = "block";
-              } catch(e) {
-                  reportArea.innerText = data.report;
-                  reportArea.style.display = "block";
-              }
+                showReport(data.report, query);
+            }
+            if (data.session_id) {
+                currentSessionId = data.session_id;
+                localStorage.setItem('current_session_id', data.session_id);
             }
             ws.close();
-          } else {
-            addLog(data.node, data.message);
-          }
-        };
+        } else {
+            const isActive = (data.node === 'summarizer' && data.message.toLowerCase().includes('synthesizing'));
+            addLog(data.node, data.message, isActive);
+        }
+    };
 
-        ws.onerror = (error) => {
-          addLog("error", "WebSocket error occurred. Connection closed.");
-        };
+    ws.onerror = () => {
+        addLog('error', 'WebSocket error occurred. Connection closed.');
+    };
 
-        ws.onclose = () => {
-          btn.disabled = false;
-          input.disabled = false;
-        };
-      }
-    </script>
-  </body>
+    ws.onclose = () => {
+        isRunning = false;
+        btn.disabled = false;
+        input.disabled = false;
+        input.value = '';
+        document.getElementById('processStatus').textContent = 'Idle';
+        setConsoleDots('idle');
+        loadSessions();
+    };
+}
+
+function setConsoleDots(state) {
+    const dots = [document.getElementById('statusDot1'), document.getElementById('statusDot2'), document.getElementById('statusDot3')];
+    if (state === 'active') {
+        dots.forEach(d => d.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse-dot');
+    } else {
+        dots.forEach(d => d.className = 'w-2 h-2 rounded-full bg-slate-700');
+    }
+}
+
+// ========== EXPORT ==========
+function exportReport() {
+    const content = document.getElementById('reportContent');
+    if (!content || content.classList.contains('hidden')) {
+        alert('No report to export yet.');
+        return;
+    }
+    const blob = new Blob([content.innerHTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'research_report.html';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ========== INIT ==========
+document.addEventListener('DOMContentLoaded', async () => {
+    // Try to restore session from localStorage
+    const savedToken = localStorage.getItem('auth_token');
+    const savedUser = localStorage.getItem('auth_user');
+
+    if (savedToken && savedUser) {
+        // Verify the token is still valid
+        try {
+            const res = await fetch('/auth/me', {
+                headers: { 'Authorization': `Bearer ${savedToken}` },
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                authToken = savedToken;
+                currentUser = data.user;
+                localStorage.setItem('auth_user', JSON.stringify(currentUser));
+                showDashboard();
+
+                // Restore last session if exists
+                const savedSessionId = localStorage.getItem('current_session_id');
+                if (savedSessionId) {
+                    loadSession(parseInt(savedSessionId));
+                }
+                return;
+            }
+        } catch (e) {
+            console.error('Token verification failed:', e);
+        }
+
+        // Token expired — clear and show login
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+    }
+
+    // Show auth modal
+    showAuthModal();
+});
+</script>
+</body>
 </html>

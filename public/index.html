@@ -177,8 +177,13 @@
           ) {
             addLog(data.node, data.message);
             if (data.report) {
-              reportArea.innerHTML = marked.parse(data.report);
-              reportArea.style.display = "block";
+              try {
+                  reportArea.innerHTML = marked.parse(data.report);
+                  reportArea.style.display = "block";
+              } catch(e) {
+                  reportArea.innerText = data.report;
+                  reportArea.style.display = "block";
+              }
             }
             ws.close();
           } else {

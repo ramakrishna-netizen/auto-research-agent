@@ -55,3 +55,6 @@ We chose a **Plan-and-Execute** pattern (via LangGraph) over a standard ReAct lo
 - **Search**: Tavily AI.
 - **Persistence**: Supabase (Auth & Real-time DB).
 - **Frontend**: Vanilla JS, Tailwind CSS.
+  
+## System Analysis & Stress Test
+- ANALYSIS.md

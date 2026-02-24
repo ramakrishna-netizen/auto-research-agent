@@ -20,6 +20,9 @@ async def planner(state: AgentState, config: RunnableConfig):
     queue = config.get("configurable", {}).get("queue")
     await send_progress(queue, "planner", "Decomposing query into sub-tasks...")
     
+    # Rate limit protection for free tiers
+    await asyncio.sleep(4)
+    
     planner_model = get_planner()
     
     # Include context if we are looping back from a failed evaluation
@@ -44,13 +47,15 @@ async def searcher(state: AgentState, config: RunnableConfig):
     tavily_client = get_tavily()
     sub_queries = state.get("sub_queries", [])
     
-    async def run_search(q):
+    async def run_search(q, index):
         try:
+            # Stagger concurrent searches slightly to avoid bursting the search API
+            await asyncio.sleep(index * 2) 
             return await tavily_client.search(q, search_depth="basic")
         except Exception as e:
             return {"results": [{"content": str(e)}]}
             
-    results_lists = await asyncio.gather(*(run_search(q) for q in sub_queries))
+    results_lists = await asyncio.gather(*(run_search(q, i) for i, q in enumerate(sub_queries)))
     
     formatted_results = []
     for q, res in zip(sub_queries, results_lists):
@@ -68,6 +73,9 @@ async def searcher(state: AgentState, config: RunnableConfig):
 async def evaluator(state: AgentState, config: RunnableConfig):
     queue = config.get("configurable", {}).get("queue")
     await send_progress(queue, "evaluator", "Evaluating if gathered information is sufficient...")
+    
+    # Rate limit protection for free tiers
+    await asyncio.sleep(4)
     
     query = state["query"]
     results = "\n\n".join(state.get("search_results", []))
@@ -95,6 +103,9 @@ async def evaluator(state: AgentState, config: RunnableConfig):
 async def summarizer(state: AgentState, config: RunnableConfig):
     queue = config.get("configurable", {}).get("queue")
     await send_progress(queue, "summarizer", "Synthesizing final report...")
+    
+    # Rate limit protection for free tiers
+    await asyncio.sleep(4)
     
     query = state["query"]
     results = "\n\n".join(state.get("search_results", []))

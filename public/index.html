@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Autonomous Research Agent</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #f5f5f5;
+        color: #333;
+      }
+      .container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .input-group {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      input[type="text"] {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 16px;
+      }
+      button {
+        padding: 10px 20px;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover {
+        background: #0052a3;
+      }
+      button:disabled {
+        background: #cccccc;
+        cursor: not-allowed;
+      }
+      .log {
+        background: #1e1e1e;
+        color: #00ff00;
+        padding: 15px;
+        border-radius: 4px;
+        font-family: monospace;
+        height: 300px;
+        overflow-y: auto;
+        margin-bottom: 20px;
+        white-space: pre-wrap;
+      }
+      .report {
+        display: none;
+        background: white;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        line-height: 1.6;
+      }
+      .node-tag {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 3px;
+        background: #333;
+        color: white;
+        margin-right: 8px;
+        font-size: 12px;
+        font-weight: bold;
+        width: 80px;
+        text-align: center;
+      }
+      .node-planner {
+        background: #2563eb;
+      }
+      .node-searcher {
+        background: #db2777;
+      }
+      .node-evaluator {
+        background: #d97706;
+      }
+      .node-summarizer {
+        background: #059669;
+      }
+      .node-system {
+        background: #4b5563;
+      }
+      .node-error {
+        background: #dc2626;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Autonomous Research Agent</h1>
+      <div class="input-group">
+        <input
+          type="text"
+          id="queryInput"
+          placeholder="Enter a complex research topic..."
+          onkeypress="if (event.key === 'Enter') startSearch();"
+        />
+        <button id="searchBtn" onclick="startSearch()">Research</button>
+      </div>
+
+      <h3>Thinking Log</h3>
+      <div id="logArea" class="log"></div>
+
+      <h3>Final Report</h3>
+      <div id="reportArea" class="report"></div>
+    </div>
+
+    <!-- marked renderer for markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+      let ws = null;
+
+      function addLog(node, message) {
+        const logArea = document.getElementById("logArea");
+        const entry = document.createElement("div");
+        entry.style.marginBottom = "8px";
+
+        const tag = document.createElement("span");
+        tag.className = `node-tag node-${node.toLowerCase()}`;
+        tag.textContent = node.toUpperCase();
+
+        const text = document.createElement("span");
+        text.textContent = message;
+
+        entry.appendChild(tag);
+        entry.appendChild(text);
+        logArea.appendChild(entry);
+        logArea.scrollTop = logArea.scrollHeight;
+      }
+
+      function startSearch() {
+        const query = document.getElementById("queryInput").value.trim();
+        if (!query) return;
+
+        const btn = document.getElementById("searchBtn");
+        const input = document.getElementById("queryInput");
+        const logArea = document.getElementById("logArea");
+        const reportArea = document.getElementById("reportArea");
+
+        btn.disabled = true;
+        input.disabled = true;
+        logArea.innerHTML = "";
+        reportArea.style.display = "none";
+        reportArea.innerHTML = "";
+
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        // Use current host for websocket connection
+        ws = new WebSocket(`${protocol}//${window.location.host}/ws/agent`);
+
+        ws.onopen = () => {
+          addLog("system", "Connected to agent. Starting task...");
+          ws.send(JSON.stringify({ query: query }));
+        };
+
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+
+          if (
+            data.node === "system" &&
+            data.message.startsWith("Task Completed")
+          ) {
+            addLog(data.node, data.message);
+            if (data.report) {
+              reportArea.innerHTML = marked.parse(data.report);
+              reportArea.style.display = "block";
+            }
+            ws.close();
+          } else {
+            addLog(data.node, data.message);
+          }
+        };
+
+        ws.onerror = (error) => {
+          addLog("error", "WebSocket error occurred. Connection closed.");
+        };
+
+        ws.onclose = () => {
+          btn.disabled = false;
+          input.disabled = false;
+        };
+      }
+    </script>
+  </body>
+</html>

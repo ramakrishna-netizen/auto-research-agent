@@ -7,9 +7,9 @@ from agent.state import AgentState, SubQueries, EvaluationResult
 import os
 
 # Models initialized lazily or using env vars directly
-def get_planner(): return ChatGoogleGenerativeAI(model="gemini-flash-latest", temperature=0)
-def get_evaluator(): return ChatGoogleGenerativeAI(model="gemini-flash-latest", temperature=0)
-def get_summarizer(): return ChatGoogleGenerativeAI(model="gemini-flash-latest", temperature=0.2)
+def get_planner(): return ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+def get_evaluator(): return ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+def get_summarizer(): return ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.2)
 def get_tavily(): return AsyncTavilyClient(api_key=os.environ.get("TAVILY_API_KEY"))
 
 async def send_progress(queue: asyncio.Queue, node: str, message: str):

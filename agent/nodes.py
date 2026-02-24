@@ -20,7 +20,7 @@ async def planner(state: AgentState, config: RunnableConfig):
     queue = config.get("configurable", {}).get("queue")
     await send_progress(queue, "planner", "Decomposing query into sub-tasks...")
     
-    # Rate limit protection for free tiers
+    # Rate limit protection: Added sleep delay to not exceed the daily rate limit for the free tier APIs
     await asyncio.sleep(4)
     
     planner_model = get_planner()
@@ -49,7 +49,7 @@ async def searcher(state: AgentState, config: RunnableConfig):
     
     async def run_search(q, index):
         try:
-            # Stagger concurrent searches slightly to avoid bursting the search API
+            # Stagger concurrent searches slightly to avoid bursting the search API and exceeding daily rate limits
             await asyncio.sleep(index * 2) 
             return await tavily_client.search(q, search_depth="basic")
         except Exception as e:
@@ -74,7 +74,7 @@ async def evaluator(state: AgentState, config: RunnableConfig):
     queue = config.get("configurable", {}).get("queue")
     await send_progress(queue, "evaluator", "Evaluating if gathered information is sufficient...")
     
-    # Rate limit protection for free tiers
+    # Rate limit protection: Added sleep delay to not exceed the daily rate limit for the free tier APIs
     await asyncio.sleep(4)
     
     query = state["query"]
@@ -104,7 +104,7 @@ async def summarizer(state: AgentState, config: RunnableConfig):
     queue = config.get("configurable", {}).get("queue")
     await send_progress(queue, "summarizer", "Synthesizing final report...")
     
-    # Rate limit protection for free tiers
+    # Rate limit protection: Added sleep delay to not exceed the daily rate limit for the free tier APIs
     await asyncio.sleep(4)
     
     query = state["query"]

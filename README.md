@@ -57,4 +57,4 @@ We chose a **Plan-and-Execute** pattern (via LangGraph) over a standard ReAct lo
 - **Frontend**: Vanilla JS, Tailwind CSS.
   
 ## System Analysis & Stress Test
-- ANALYSIS.md
+- check in ANALYSIS.md
